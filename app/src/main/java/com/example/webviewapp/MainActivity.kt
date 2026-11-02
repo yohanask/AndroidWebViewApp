@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val TAG = "WebViewApp"
 
-    private val TARGET_URL = "https://kinerja.gtkbaturraden.web.id"
+    private val TARGET_URL = "https://drive.operatordigital.web.id"
     private val PERMISSION_REQUEST_CODE = 100
     private val FILE_CHOOSER_RESULT_CODE = 101
 
