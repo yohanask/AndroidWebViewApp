@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
     private val TAG = "WebViewApp"
 
     // CONFIG: Change this to your target URL
-    private val TARGET_URL = "https://example.com"
+    private val TARGET_URL = "https://kinerja.gtkbaturraden.web.id"
     private val PERMISSION_REQUEST_CODE = 100
     private val FILE_CHOOSER_RESULT_CODE = 101
 
