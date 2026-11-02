@@ -20,13 +20,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
  * Android WebView Scaffold - MainActivity
- * 
- * A reusable WebView component with:
- * - JavaScript support
- * - File upload/download
- * - Pull-to-refresh
- * - Cache support
- * - Permission handling
  */
 class MainActivity : AppCompatActivity() {
 
@@ -37,7 +30,6 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val TAG = "WebViewApp"
 
-    // CONFIG: Change this to your target URL
     private val TARGET_URL = "https://kinerja.gtkbaturraden.web.id"
     private val PERMISSION_REQUEST_CODE = 100
     private val FILE_CHOOSER_RESULT_CODE = 101
@@ -62,6 +54,11 @@ class MainActivity : AppCompatActivity() {
             webView.reload()
         }
 
+        // Perbaikan: Kunci swipe refresh hanya aktif saat posisi webView berada di paling atas (scrollY == 0)
+        webView.viewTreeObserver.addOnScrollChangedListener {
+            swipeRefreshLayout.isEnabled = webView.scrollY == 0
+        }
+
         // Load target URL
         if (savedInstanceState == null) {
             Log.d(TAG, "Loading URL: $TARGET_URL")
@@ -72,46 +69,30 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
         webView.settings.apply {
-            // JavaScript & DOM
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-
-            // Cache
             cacheMode = WebSettings.LOAD_DEFAULT
-
-            // Zoom
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-
-            // Viewport
             useWideViewPort = true
             loadWithOverviewMode = true
-
-            // Media & File access
             mediaPlaybackRequiresUserGesture = false
             allowFileAccess = true
             allowContentAccess = true
-
-            // Mixed content
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-
-            // Form data
             saveFormData = true
         }
 
-        // Cookie management
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true)
         }
 
-        // WebViewClient
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url.toString()
-
                 return when {
                     url.startsWith("tel:") -> {
                         startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(url)))
@@ -143,7 +124,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // WebChromeClient
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
@@ -166,16 +146,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Download listener
-        webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             val request = DownloadManager.Request(Uri.parse(url))
             request.setMimeType(mimeType)
             request.addRequestHeader("User-Agent", userAgent)
             request.setTitle(URLUtil.guessFileName(url, contentDisposition, mimeType))
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, 
-                URLUtil.guessFileName(url, contentDisposition, mimeType))
-
+            request.setDestinationInExternalPublicDir(
+                Environment.DIRECTORY_DOWNLOADS, 
+                URLUtil.guessFileName(url, contentDisposition, mimeType)
+            )
             val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             dm.enqueue(request)
             Toast.makeText(applicationContext, "Downloading...", Toast.LENGTH_SHORT).show()
@@ -203,24 +183,20 @@ class MainActivity : AppCompatActivity() {
         val permissions = arrayOf(
             Manifest.permission.INTERNET,
             Manifest.permission.ACCESS_NETWORK_STATE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
-
         val permissionsToRequest = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
         }
-
         if (permissionsToRequest.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_CODE)
         }
     }
 
-    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack()
             return true
