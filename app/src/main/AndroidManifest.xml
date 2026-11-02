@@ -20,8 +20,10 @@
         android:theme="@style/Theme.WebViewApp"
         android:usesCleartextTraffic="true">
 
+        <!-- Memaksa nama terbaca dari strings.xml dengan menambahkan android:label di sini -->
         <activity
             android:name=".MainActivity"
+            android:label="@string/app_name"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
