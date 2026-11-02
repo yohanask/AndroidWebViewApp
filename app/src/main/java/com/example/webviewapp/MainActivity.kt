@@ -20,6 +20,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
  * Android WebView Scaffold - MainActivity
+ * Terkonfigurasi untuk: DriveDigi Cloud Storage
  */
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val TAG = "WebViewApp"
 
+    // URL Target disesuaikan menuju sistem cloud DriveDigi
     private val TARGET_URL = "https://drive.operatordigital.web.id"
     private val PERMISSION_REQUEST_CODE = 100
     private val FILE_CHOOSER_RESULT_CODE = 101
@@ -43,23 +45,23 @@ class MainActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
 
-        // Request permissions
+        // Meminta izin akses perangkat (Kamera, Penyimpanan, Lokasi)
         checkAndRequestPermissions()
 
-        // Setup WebView
+        // Setup setelan WebView
         setupWebView()
 
-        // Setup pull-to-refresh
+        // Setup fitur pull-to-refresh
         swipeRefreshLayout.setOnRefreshListener {
             webView.reload()
         }
 
-        // Perbaikan: Kunci swipe refresh hanya aktif saat posisi webView berada di paling atas (scrollY == 0)
+        // Pengunci swipe refresh: hanya aktif jika posisi koordinat vertikal web di paling atas (scrollY == 0)
         webView.viewTreeObserver.addOnScrollChangedListener {
             swipeRefreshLayout.isEnabled = webView.scrollY == 0
         }
 
-        // Load target URL
+        // Memuat URL target secara aman
         if (savedInstanceState == null) {
             Log.d(TAG, "Loading URL: $TARGET_URL")
             webView.loadUrl(TARGET_URL)
@@ -73,6 +75,11 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             databaseEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
+            
+            // FAKE USER-AGENT: Memaksa Google mengenali APK ini sebagai Google Chrome Mobile biasa
+            // Berfungsi menyelamatkan fitur "Login dengan Google" agar tidak diblokir oleh error 403 disallowed_useragent
+            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -85,6 +92,7 @@ class MainActivity : AppCompatActivity() {
             saveFormData = true
         }
 
+        // Sinkronisasi Cookie aplikasi
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true)
@@ -102,7 +110,7 @@ class MainActivity : AppCompatActivity() {
                         startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse(url)))
                         true
                     }
-                    else -> false
+                    else -> false // Nilai false memastikan navigasi situs dan otentikasi akun tetap bertahan di dalam APK
                 }
             }
 
@@ -129,6 +137,7 @@ class MainActivity : AppCompatActivity() {
                 progressBar.progress = newProgress
             }
 
+            // Membuka file manager perangkat saat tombol unggah berkas (Upload) di DriveDigi ditekan
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
@@ -146,6 +155,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Berfungsi menangani proses download berkas cloud dari server DriveDigi ke folder Download HP pengguna
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             val request = DownloadManager.Request(Uri.parse(url))
             request.setMimeType(mimeType)
@@ -158,7 +168,7 @@ class MainActivity : AppCompatActivity() {
             )
             val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             dm.enqueue(request)
-            Toast.makeText(applicationContext, "Downloading...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(applicationContext, "Downloading file...", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -196,6 +206,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Mengaktifkan fungsi tombol back bawaan HP agar kembali ke halaman web sebelumnya, bukan langsung menutup aplikasi
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack()
