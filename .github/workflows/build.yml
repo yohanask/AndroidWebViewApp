@@ -1,18 +1,18 @@
-name: Build Android WebView APK (Release)
+name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-    - name: Checkout code
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
@@ -20,70 +20,16 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: gradle
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+    - name: Grant Execute Permission for Gradlew
+      run: chmod +x gradlew
 
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v2
-      with:
-        gradle-version: 8.2
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
 
-    - name: Verify project structure
-      run: |
-        echo "=== Project Structure ==="
-        ls -la
-        echo ""
-        echo "=== App Directory ==="
-        ls -la app/
-
-    - name: Build Release APK
-      run: |
-        echo "Starting Gradle Release build..."
-        gradle assembleRelease --stacktrace
-        echo "Build completed"
-
-    - name: Verify APK
-      run: |
-        echo "=== APK Output ==="
-        ls -la app/build/outputs/apk/release/
-        echo ""
-        echo "=== APK Info ==="
-        ls -lh app/build/outputs/apk/release/*.apk
-
-    - name: Upload APK as Artifact
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WebViewApp-Release-APK
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
-        retention-days: 90
-
-    - name: Rename APK for Release
-      run: |
-        cp app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/WebViewApp-release.apk
-
-    - name: Create/Update GitHub Release
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: "app/build/outputs/apk/release/WebViewApp-release.apk"
-        tag: "v1.0.0"
-        name: "WebView App v1.0.0 (Release)"
-        body: |
-          🚀 Android WebView Scaffold App (Release Build)
-
-          ✨ Features:
-          - Full WebView support
-          - JavaScript enabled
-          - File upload/download support
-          - Camera, microphone, location permissions
-          - Pull-to-refresh
-          - Back button navigation
-          - App cache enabled
-
-          📖 To customize: Edit `TARGET_URL` in MainActivity.kt
-
-          ⚠️ Note: This is an unsigned release APK. For production distribution, 
-          consider signing the APK with your own keystore.
-        token: ${{ secrets.GITHUB_TOKEN }}
-        allowUpdates: true
-        replacesArtifacts: true
+        name: SIMBAKIN-Baturraden-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
