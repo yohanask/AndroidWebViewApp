@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     private val TAG = "WebViewApp"
 
     // URL Target disesuaikan menuju sistem cloud DriveDigi
-    private val TARGET_URL = "https://drive.operatordigital.web.id"
+    private val TARGET_URL = "https://sipandi.gtkbaturraden.web.id/"
     private val PERMISSION_REQUEST_CODE = 100
     private val FILE_CHOOSER_RESULT_CODE = 101
 
