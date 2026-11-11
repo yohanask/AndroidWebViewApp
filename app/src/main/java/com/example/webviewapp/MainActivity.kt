@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -34,16 +35,24 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
  *   - Tanpa override  → default WebChromeClient diam → PERMISSION_DENIED
  *                       (user melihat "Izin lokasi ditolak" walaupun Android
  *                        sudah mengizinkan ACCESS_FINE_LOCATION).
- *   - Tanpa geolocationEnabled = true → API lokasi tidak tersedia di WebView.
+ *   - Tanpa setGeolocationEnabled(true) → API lokasi tidak tersedia di WebView.
  *   - Callback WAJIB dibalas (granted maupun denied), kalau tidak WebView
  *     akan menggantung / meminta izin terus-menerus.
  *
  * Perbaikan yang diterapkan:
- *   [1] webView.settings.geolocationEnabled = true
+ *   [1] webView.settings.setGeolocationEnabled(true)
  *   [2] onGeolocationPermissionsShowPrompt → jawab allow=true, retain=true
  *   [3] onRequestPermissionsResult → jawab callback bila izin runtime diminta
  *   [4] onPermissionRequest → HANYA kamera, HANYA origin aplikasi ini
  *   [5] Rekaman suara (RECORD_AUDIO) tidak lagi diminta / dilepas
+ *   [6] onGeolocationPermissionsHidePrompt → lepas callback agar tak menggantung
+ *
+ * CATATAN BUILD:
+ *   - setGeolocationEnabled(true) memakai METODE, bukan properti
+ *     ("geolocationEnabled = true") karena WebSettings tidak menyediakan
+ *     getter-nya → sintaks properti tidak bisa dikompilasi.
+ *   - Tidak memakai BuildConfig.DEBUG (kelasnya bisa tidak dibuat pada
+ *     AGP 8+ dengan buildConfig nonaktif) → memakai ApplicationInfo.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 class MainActivity : AppCompatActivity() {
@@ -83,9 +92,11 @@ class MainActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
 
-        // Remote debugging via chrome://inspect (hanya build debug) —
+        // Remote debugging via chrome://inspect (hanya pada build debug) —
         // memudahkan pemeriksaan konsol WebView saat menelusuri izin lokasi.
-        if (BuildConfig.DEBUG) {
+        // (Tidak memakai BuildConfig karena fitur buildConfig bisa nonaktif
+        //  pada AGP 8+ → kelas BuildConfig tidak dibuat.)
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             WebView.setWebContentsDebuggingEnabled(true)
         }
 
@@ -123,9 +134,14 @@ class MainActivity : AppCompatActivity() {
 
             // ══════════════════════════════════════════════════════════
             // [1] WAJIB: mengaktifkan Geolocation API di WebView.
-            //     Tanpa baris ini navigator.geolocation tidak tersedia.
+            //     Tanpa baris ini navigator.geolocation tidak tersedia
+            //     dan halaman tidak pernah bisa meminta lokasi.
+            //
+            //     CATATAN: harus setGeolocationEnabled(true) (bukan properti
+            //     "geolocationEnabled = true") karena WebSettings tidak
+            //     menyediakan getter-nya → sintaks properti TIDAK kompilasi.
             // ══════════════════════════════════════════════════════════
-            geolocationEnabled = true
+            setGeolocationEnabled(true)
 
             // FAKE USER-AGENT: Memaksa Google mengenali APK ini sebagai Google Chrome Mobile biasa
             // Berfungsi menyelamatkan fitur "Login dengan Google" agar tidak diblokir oleh error 403 disallowed_useragent
@@ -141,7 +157,7 @@ class MainActivity : AppCompatActivity() {
             allowContentAccess = true
 
             // Situs SIPANDI seluruhnya HTTPS → tidak perlu konten campuran.
-            // NEVER_ALLOW mencegah aset http:// dimuat diam-diam.
+            // MIXED_CONTENT_NEVER_ALLOW mencegah aset http:// dimuat diam-diam.
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             saveFormData = true
         }
@@ -204,6 +220,8 @@ class MainActivity : AppCompatActivity() {
 
             // ══════════════════════════════════════════════════════════
             // [2] IZIN LOKASI — inti perbaikan ini.
+            //     WebView memanggil method ini saat halaman meminta lokasi.
+            //     Aplikasi WAJIB menjawab lewat callback.
             //     retain = true → keputusan DISIMPAN untuk origin tersebut,
             //     sehingga tidak pernah ditanyakan lagi (tidak ada dialog
             //     izin yang muncul berulang setiap navigate).
@@ -238,9 +256,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Permintaan izin lokasi dibatalkan halaman (halaman ditutup /
-            // navigasi). Tidak ada UI dialog buatan aplikasi, jadi dilepas
-            // agar WebView tidak menggantung.
+            // [6] Permintaan izin lokasi dibatalkan oleh halaman (halaman
+            // ditutup / navigasi). Tidak ada UI dialog buatan aplikasi, jadi
+            // cukup dilepas agar WebView tidak menggantung.
             override fun onGeolocationPermissionsHidePrompt() {
                 super.onGeolocationPermissionsHidePrompt()
                 Log.i(TAG, "[GEO] permintaan izin lokasi dibatalkan halaman")
@@ -287,7 +305,7 @@ class MainActivity : AppCompatActivity() {
             request.setMimeType(mimeType)
             request.addRequestHeader("User-Agent", userAgent)
             request.setTitle(URLUtil.guessFileName(url, contentDisposition, mimeType))
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETE)
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             request.setDestinationInExternalPublicDir(
                 Environment.DIRECTORY_DOWNLOADS,
                 URLUtil.guessFileName(url, contentDisposition, mimeType)
